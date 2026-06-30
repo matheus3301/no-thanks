@@ -101,17 +101,30 @@ h2, h3 { margin: .1rem 0 .6rem; }
   background: rgba(0,0,0,.18);
   padding: .85rem;
   border: 1px solid rgba(255,255,255,.08);
+  transition: transform .16s ease, border-color .16s ease, background .16s ease;
 }
+.player.draggable { cursor: grab; }
+.player.dragging { opacity: .55; transform: scale(.98); }
+.player.drag-over { border-color: var(--accent); background: rgba(255,189,89,.12); }
 .player.current { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(255,189,89,.35); }
 .player.me { background: rgba(255,189,89,.08); }
 .player-top { display: flex; justify-content: space-between; gap: .5rem; align-items: baseline; }
-.player-name { font-weight: 1000; }
+.seat-number { width: 1.65rem; height: 1.65rem; border-radius: 50%; display: inline-grid; place-items: center; flex: 0 0 auto; background: rgba(255,255,255,.1); color: var(--accent); font-weight: 1000; }
+.player-name { font-weight: 1000; flex: 1; }
 .score { color: var(--accent); font-weight: 1000; }
+.reorder-controls { display: flex; justify-content: flex-end; gap: .4rem; margin-top: .7rem; }
+.mini-action { padding: .35rem .55rem; min-width: 2.2rem; border-radius: .7rem; font-size: .9rem; }
 .cards { display: flex; flex-wrap: wrap; gap: .32rem; margin-top: .65rem; }
-.mini-card { background: #fff8ec; color: #2b1605; min-width: 2rem; padding: .25rem .35rem; border-radius: .42rem; font-weight: 950; text-align: center; }
+.mini-card { min-width: 2rem; padding: .25rem .35rem; border-radius: .42rem; font-weight: 950; text-align: center; }
 .meta { color: var(--muted); font-size: .83rem; margin-top: .45rem; }
 .log { display: grid; gap: .45rem; color: var(--muted); font-size: .88rem; max-height: 190px; overflow: auto; }
-.ranking { line-height: 1.8; }
+.ranking { display: grid; gap: .65rem; padding: 0; margin: .75rem 0 0; list-style: none; line-height: 1.2; }
+.ranking-row { display: grid; grid-template-columns: 3rem 1fr auto; grid-template-areas: "medal name score" "medal detail detail"; gap: .15rem .7rem; align-items: center; padding: .75rem; border-radius: 1rem; background: rgba(0,0,0,.18); border: 1px solid rgba(255,255,255,.08); }
+.ranking-row.winner { background: linear-gradient(135deg, rgba(255,189,89,.24), rgba(249,115,22,.14)); border-color: rgba(255,189,89,.55); box-shadow: 0 14px 40px rgba(249,115,22,.18); }
+.ranking-medal { grid-area: medal; font-size: 2rem; width: 3rem; height: 3rem; border-radius: 1rem; display: grid; place-items: center; background: rgba(255,255,255,.09); }
+.ranking-name { grid-area: name; font-weight: 1000; }
+.ranking-score { grid-area: score; color: var(--accent); font-weight: 1000; }
+.ranking-detail { grid-area: detail; color: var(--muted); font-size: .85rem; }
 .toast { position: fixed; left: 1rem; right: 1rem; bottom: 1rem; background: #2a1420; color: #fff; border: 1px solid rgba(255,255,255,.18); padding: .9rem 1rem; border-radius: 1rem; box-shadow: 0 10px 30px rgba(0,0,0,.4); }
 
 @media (max-width: 760px) {

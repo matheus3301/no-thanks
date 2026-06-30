@@ -203,6 +203,20 @@ function takeCard(room, playerId) {
   markChanged(room);
 }
 
+function reorderPlayers(room, requesterId, orderedIds) {
+  if (!room.players.some((player) => player.id === requesterId && player.connected)) throw new Error('Você não está nesta mesa.');
+  if (room.started) throw new Error('A ordem só pode ser alterada antes da partida começar.');
+  if (!Array.isArray(orderedIds)) throw new Error('Ordem inválida.');
+  const existingIds = room.players.map((player) => player.id);
+  const uniqueIds = [...new Set(orderedIds)];
+  if (uniqueIds.length !== existingIds.length) throw new Error('Ordem incompleta.');
+  if (!existingIds.every((id) => uniqueIds.includes(id))) throw new Error('Ordem contém jogadores inválidos.');
+  const byId = new Map(room.players.map((player) => [player.id, player]));
+  room.players = uniqueIds.map((id) => byId.get(id));
+  addLog(room, 'Ordem dos jogadores atualizada.');
+  markChanged(room);
+}
+
 function disconnectPlayer(room, playerId) {
   const player = room.players.find((p) => p.id === playerId);
   if (player) {
@@ -220,6 +234,7 @@ module.exports = {
   startGame,
   passCard,
   takeCard,
+  reorderPlayers,
   disconnectPlayer,
   serialize,
   scoreCards,

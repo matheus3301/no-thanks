@@ -77,8 +77,17 @@ function waitFor(socket, predicate, label, timeout = 2500) {
     waitFor(c, (state) => state.players.length === 3, 'C sees 3'),
   ]);
 
+  const reorderedIds = [players[2].id, players[0].id, players[1].id];
+  const reorder = await emitAck(b, 'lobby:reorder', { orderedIds: reorderedIds });
+  if (!reorder?.ok) throw new Error(`reorder failed: ${reorder?.error || JSON.stringify(reorder)}`);
+  const reordered = await Promise.all([
+    waitFor(host, (state) => state.players.map((p) => p.id).join(',') === reorderedIds.join(','), 'host sees reorder'),
+    waitFor(b, (state) => state.players.map((p) => p.id).join(',') === reorderedIds.join(','), 'B sees reorder'),
+    waitFor(c, (state) => state.players.map((p) => p.id).join(',') === reorderedIds.join(','), 'C sees reorder'),
+  ]);
+
   for (const socket of [host, b, c]) socket.close();
-  console.log(`join sync ok via ${base}: room ${code}; hostAfterB=${hostAfterB.players.length}; bAfterB=${bAfterB.players.length}; all=${all.map((s) => s.players.length).join('/')}`);
+  console.log(`join sync ok via ${base}: room ${code}; hostAfterB=${hostAfterB.players.length}; bAfterB=${bAfterB.players.length}; all=${all.map((s) => s.players.length).join('/')}; reordered=${reordered[0].players.map((p) => p.name).join('>')}`);
 })().catch((error) => {
   console.error(error);
   process.exit(1);

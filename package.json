@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "node src/server.js",
-    "test": "node --test",
+    "test": "node --test test/*.test.js",
     "smoke": "node scripts/smoke.js",
     "test:join-sync": "node scripts/join-sync-test.js"
   },

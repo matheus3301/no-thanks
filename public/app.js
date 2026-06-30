@@ -9,6 +9,7 @@ const socket = io({
 });
 let state = null;
 let polling = null;
+let draggingPlayerId = null;
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -38,6 +39,40 @@ function activeCode() {
 
 function roomUrl(code = activeCode()) {
   return `${location.origin}${location.pathname}?room=${encodeURIComponent(code || '')}`;
+}
+
+function cardTone(value) {
+  const number = Number(value || 3);
+  const pct = Math.max(0, Math.min(1, (number - 3) / 32));
+  const hue = 132 - pct * 132;
+  const light = 46 + (1 - Math.abs(pct - 0.5) * 2) * 4;
+  return { hue, light };
+}
+
+function cardStyle(value, compact = false) {
+  const { hue, light } = cardTone(value);
+  const shadow = compact ? 'none' : `0 18px 42px hsla(${hue}, 82%, 24%, .35)`;
+  return `background: linear-gradient(155deg, hsl(${hue}, 78%, ${light + 18}%), hsl(${hue}, 76%, ${light}%)); color: ${hue > 74 ? '#092312' : '#fff8ec'}; box-shadow: ${shadow};`;
+}
+
+function playerOrder() {
+  return state?.players.map((player) => player.id) || [];
+}
+
+async function reorderPlayers(orderedIds) {
+  if (!state || state.started) return;
+  const res = await emitAck('lobby:reorder', { orderedIds });
+  if (!res.ok) return showToast(res.error);
+  if (res.state) applyState(res.state);
+}
+
+function movePlayer(id, delta) {
+  const order = playerOrder();
+  const from = order.indexOf(id);
+  const to = from + delta;
+  if (from < 0 || to < 0 || to >= order.length) return;
+  [order[from], order[to]] = [order[to], order[from]];
+  reorderPlayers(order);
 }
 
 function setError(text = '') { els.entryError.textContent = text; }
@@ -142,6 +177,11 @@ function render() {
   els.startBtn.textContent = 'Iniciar partida';
 
   els.currentCard.textContent = state.currentCard || '?';
+  if (state.currentCard) {
+    els.currentCard.setAttribute('style', cardStyle(state.currentCard));
+  } else {
+    els.currentCard.removeAttribute('style');
+  }
   els.pot.textContent = state.pot;
   els.cardsRemaining.textContent = `${state.cardsRemaining} carta(s)`;
   const me = state.players.find((p) => p.self || p.id === playerId());
@@ -151,23 +191,88 @@ function render() {
   els.takeBtn.disabled = !isMyTurn;
   els.actionHint.textContent = me && me.chips <= 0 && isMyTurn ? 'Você está sem fichas, então precisa pegar a carta.' : '';
 
-  els.players.innerHTML = state.players.map((p) => {
+  els.players.innerHTML = state.players.map((p, index) => {
     const chipsText = p.chipsHidden ? 'fichas ocultas' : `${p.chips} ficha(s)`;
     const scoreText = p.score === null || p.score === undefined ? '— pts' : `${p.score} pts`;
+    const reorderControls = state.started ? '' : `
+      <div class="reorder-controls" aria-label="Reordenar ${escapeHtml(p.name)}">
+        <button type="button" class="mini-action" data-move="up" data-player-id="${escapeHtml(p.id)}" ${index === 0 ? 'disabled' : ''}>↑</button>
+        <button type="button" class="mini-action" data-move="down" data-player-id="${escapeHtml(p.id)}" ${index === state.players.length - 1 ? 'disabled' : ''}>↓</button>
+      </div>
+    `;
     return `
-      <article class="player ${p.id === state.currentPlayerId ? 'current' : ''} ${p.self || p.id === playerId() ? 'me' : ''}">
+      <article class="player ${p.id === state.currentPlayerId ? 'current' : ''} ${p.self || p.id === playerId() ? 'me' : ''} ${!state.started ? 'draggable' : ''}" data-player-id="${escapeHtml(p.id)}" draggable="${!state.started}">
         <div class="player-top">
+          <span class="seat-number">${index + 1}</span>
           <span class="player-name">${escapeHtml(p.name)}${p.host ? ' 👑' : ''}${p.self || p.id === playerId() ? ' · você' : ''}</span>
           <span class="score">${scoreText}</span>
         </div>
         <div class="meta">${chipsText} · ${p.connected ? 'online' : 'offline'}</div>
-        <div class="cards">${p.cards.map((card) => `<span class="mini-card">${card}</span>`).join('') || '<span class="muted small">sem cartas</span>'}</div>
+        <div class="cards">${p.cards.map((card) => `<span class="mini-card" style="${cardStyle(card, true)}">${card}</span>`).join('') || '<span class="muted small">sem cartas</span>'}</div>
+        ${reorderControls}
       </article>
     `;
   }).join('');
+  bindPlayerOrdering();
 
-  els.ranking.innerHTML = state.ranking.map((p) => `<li><strong>${escapeHtml(p.name)}</strong> — ${p.score} pontos (${p.chips} fichas)</li>`).join('');
+  renderRanking();
   els.log.innerHTML = state.log.map((line) => `<div>${escapeHtml(line)}</div>`).join('');
+}
+
+function renderRanking() {
+  if (!state?.ranking?.length) {
+    els.ranking.innerHTML = '';
+    return;
+  }
+  els.ranking.innerHTML = state.ranking.map((p, index) => {
+    const medal = index === 0 ? '🏆' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}º`;
+    const winnerClass = index === 0 ? 'winner' : '';
+    return `
+      <li class="ranking-row ${winnerClass}">
+        <span class="ranking-medal">${medal}</span>
+        <span class="ranking-name">${escapeHtml(p.name)}</span>
+        <span class="ranking-score">${p.score} pts</span>
+        <span class="ranking-detail">${p.chips} ficha(s)</span>
+      </li>
+    `;
+  }).join('');
+}
+
+function bindPlayerOrdering() {
+  if (state?.started) return;
+  for (const card of els.players.querySelectorAll('.player.draggable')) {
+    card.addEventListener('dragstart', (event) => {
+      draggingPlayerId = card.dataset.playerId;
+      card.classList.add('dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', draggingPlayerId);
+    });
+    card.addEventListener('dragend', () => {
+      draggingPlayerId = null;
+      card.classList.remove('dragging');
+      els.players.querySelectorAll('.drag-over').forEach((item) => item.classList.remove('drag-over'));
+    });
+    card.addEventListener('dragover', (event) => {
+      event.preventDefault();
+      if (draggingPlayerId && draggingPlayerId !== card.dataset.playerId) card.classList.add('drag-over');
+    });
+    card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+    card.addEventListener('drop', (event) => {
+      event.preventDefault();
+      card.classList.remove('drag-over');
+      const fromId = event.dataTransfer.getData('text/plain') || draggingPlayerId;
+      const toId = card.dataset.playerId;
+      const order = playerOrder();
+      const from = order.indexOf(fromId);
+      const to = order.indexOf(toId);
+      if (from < 0 || to < 0 || from === to) return;
+      order.splice(to, 0, order.splice(from, 1)[0]);
+      reorderPlayers(order);
+    });
+  }
+  for (const button of els.players.querySelectorAll('[data-move]')) {
+    button.addEventListener('click', () => movePlayer(button.dataset.playerId, button.dataset.move === 'up' ? -1 : 1));
+  }
 }
 
 function escapeHtml(value) {

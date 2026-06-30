@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createRoom, addPlayer, startGame, passCard, takeCard, scoreCards, startingChips, serialize } = require('../src/game');
+const { createRoom, addPlayer, startGame, passCard, takeCard, reorderPlayers, scoreCards, startingChips, serialize } = require('../src/game');
 
 test('score only counts the lowest card in consecutive runs and subtracts chips', () => {
   assert.equal(scoreCards([3, 4, 5, 8, 10, 11]), 21);
@@ -60,4 +60,23 @@ test('serialize reveals all chips and final scores after the game ends', () => {
   const view = serialize(room, 'a');
   assert.equal(view.players.every((player) => player.chips !== null), true);
   assert.equal(view.ranking.length, 3);
+});
+
+test('reorderPlayers changes lobby order before the game starts', () => {
+  const room = createRoom('a', 'Ana', 'TEST');
+  addPlayer(room, 'b', 'Bia');
+  addPlayer(room, 'c', 'Caio');
+
+  reorderPlayers(room, 'b', ['c', 'a', 'b']);
+  assert.deepEqual(room.players.map((player) => player.id), ['c', 'a', 'b']);
+  assert.equal(room.version > 1, true);
+});
+
+test('reorderPlayers is blocked after the game starts', () => {
+  const room = createRoom('a', 'Ana', 'TEST');
+  addPlayer(room, 'b', 'Bia');
+  addPlayer(room, 'c', 'Caio');
+  startGame(room, 'a');
+
+  assert.throws(() => reorderPlayers(room, 'a', ['c', 'b', 'a']), /antes da partida/);
 });

@@ -10,6 +10,7 @@ const {
   startGame,
   passCard,
   takeCard,
+  reorderPlayers,
   disconnectPlayer,
   serialize,
   makeCode,
@@ -155,6 +156,20 @@ io.on('connection', (socket) => {
       const room = rooms.get(socketRoom.get(socket.id));
       if (!room) throw new Error('Você não está em uma mesa.');
       startGame(room, playerId);
+      ack({ ok: true, version: room.version, state: serialize(room, playerId) });
+      emitRoom(room);
+    } catch (error) {
+      ack({ ok: false, error: error.message });
+      sendError(socket, error.message);
+    }
+  });
+
+  socket.on('lobby:reorder', (payload = {}, ack = () => {}) => {
+    try {
+      const playerId = identify(socket, payload);
+      const room = rooms.get(socketRoom.get(socket.id));
+      if (!room) throw new Error('Você não está em uma mesa.');
+      reorderPlayers(room, playerId, payload.orderedIds);
       ack({ ok: true, version: room.version, state: serialize(room, playerId) });
       emitRoom(room);
     } catch (error) {
