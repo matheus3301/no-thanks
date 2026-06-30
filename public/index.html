@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>No Thanks • Mesa local</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section id="entry" class="panel hero">
+        <p class="eyebrow">Mesa rápida</p>
+        <h1>No Thanks</h1>
+        <p class="muted">Entre pelo QR Code, diga “não, valeu” pagando fichas ou pegue a carta com o pote. Menor pontuação vence.</p>
+        <label>Seu nome
+          <input id="name" autocomplete="name" maxlength="24" placeholder="Ex: Matheus" />
+        </label>
+        <div class="join-line">
+          <button id="createBtn" class="primary">Criar mesa</button>
+        </div>
+        <div class="divider"><span>ou entrar com código</span></div>
+        <label>Código da mesa
+          <input id="roomCode" maxlength="4" placeholder="ABCD" />
+        </label>
+        <button id="joinBtn">Entrar</button>
+        <p id="entryError" class="error"></p>
+      </section>
+
+      <section id="room" class="hidden">
+        <header class="topbar panel">
+          <div>
+            <p class="eyebrow">Mesa <strong id="codeText">----</strong></p>
+            <h2 id="statusText">Aguardando jogadores</h2>
+          </div>
+          <button id="copyBtn" class="ghost">Copiar link</button>
+        </header>
+
+        <section id="lobby" class="panel lobby">
+          <div>
+            <h3>Chama a galera pelo QR</h3>
+            <p class="muted">Oficialmente é 3 a 7 jogadores. O anfitrião inicia quando tiver gente suficiente.</p>
+          </div>
+          <img id="qr" class="qr" alt="QR Code para entrar na mesa" />
+          <p><a id="shareLink" href="#">Abrir link da mesa</a></p>
+          <button id="startBtn" class="primary">Iniciar partida</button>
+        </section>
+
+        <section id="game" class="game-grid hidden">
+          <article class="panel table-card">
+            <p class="eyebrow">Carta atual</p>
+            <div class="big-card" id="currentCard">?</div>
+            <div class="pot"><span id="pot">0</span> ficha(s) no pote</div>
+            <p id="turnText" class="turn">Aguardando...</p>
+            <div class="actions">
+              <button id="passBtn">Não, valeu (-1 ficha)</button>
+              <button id="takeBtn" class="primary">Pegar carta</button>
+            </div>
+            <p id="actionHint" class="muted small"></p>
+          </article>
+
+          <aside class="panel rules">
+            <h3>Regras rápidas</h3>
+            <ul>
+              <li>Passar custa 1 ficha.</li>
+              <li>Pegar carta também pega o pote.</li>
+              <li>Sem fichas? Precisa pegar.</li>
+              <li>Sequências contam só a menor carta.</li>
+              <li>Menor pontuação vence.</li>
+            </ul>
+          </aside>
+        </section>
+
+        <section class="panel players-panel">
+          <div class="section-head">
+            <h3>Jogadores</h3>
+            <span id="cardsRemaining" class="pill">0 cartas</span>
+          </div>
+          <div id="players" class="players"></div>
+        </section>
+
+        <section id="result" class="panel hidden">
+          <h3>Fim de jogo</h3>
+          <ol id="ranking" class="ranking"></ol>
+        </section>
+
+        <section class="panel log-panel">
+          <h3>Log</h3>
+          <div id="log" class="log"></div>
+        </section>
+      </section>
+    </main>
+
+    <div id="toast" class="toast hidden"></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

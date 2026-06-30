@@ -1,0 +1,22 @@
+{
+  "name": "no-thanks-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local multiplayer No Thanks-style card game with QR room joining.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "node --test",
+    "smoke": "node scripts/smoke.js",
+    "test:join-sync": "node scripts/join-sync-test.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "qrcode": "^1.5.3",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.3"
+  }
+}
