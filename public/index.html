@@ -48,6 +48,7 @@
             <h2 id="statusText">Aguardando jogadores</h2>
           </div>
           <button id="copyBtn" class="ghost">Copiar link</button>
+          <button id="alertBtn" class="ghost">Ativar alertas</button>
           <button id="roomPhotoBtn" class="ghost">Trocar foto</button>
         </header>
 
@@ -64,6 +65,7 @@
         <section id="game" class="game-grid hidden">
           <article class="panel table-card">
             <p class="eyebrow">Carta atual</p>
+            <div id="turnBanner" class="turn-banner hidden" role="status" aria-live="polite">É SUA VEZ. Sem pressão. Só todo mundo olhando.</div>
             <div class="big-card" id="currentCard">?</div>
             <div class="pot"><span id="pot">0</span> ficha(s) no pote</div>
             <p id="turnText" class="turn">Aguardando...</p>
@@ -111,6 +113,14 @@
     </main>
 
     <div id="toast" class="toast hidden"></div>
+    <div id="turnOverlay" class="turn-overlay hidden" aria-hidden="true">
+      <div class="turn-overlay-card">
+        <div class="turn-overlay-emoji">🔥</div>
+        <strong>SUA VEZ!</strong>
+        <span>Escolhe logo antes que a carta escolha você.</span>
+      </div>
+    </div>
+    <div id="fxLayer" class="fx-layer" aria-hidden="true"></div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/app.js"></script>
   </body>

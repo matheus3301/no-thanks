@@ -11,16 +11,34 @@ let state = null;
 let polling = null;
 let draggingPlayerId = null;
 let cameraStream = null;
+let lastTurnKey = '';
+let audioContext = null;
 
 const $ = (id) => document.getElementById(id);
 const els = {
   entry: $('entry'), room: $('room'), lobby: $('lobby'), game: $('game'), result: $('result'),
   name: $('name'), roomCode: $('roomCode'), entryError: $('entryError'), createBtn: $('createBtn'), joinBtn: $('joinBtn'),
   avatarPreview: $('avatarPreview'), photoBtn: $('photoBtn'), clearPhotoBtn: $('clearPhotoBtn'), cameraPanel: $('cameraPanel'), cameraPreview: $('cameraPreview'), captureBtn: $('captureBtn'), photoCanvas: $('photoCanvas'),
-  codeText: $('codeText'), statusText: $('statusText'), qr: $('qr'), shareLink: $('shareLink'), startBtn: $('startBtn'), copyBtn: $('copyBtn'), roomPhotoBtn: $('roomPhotoBtn'),
-  currentCard: $('currentCard'), pot: $('pot'), turnText: $('turnText'), passBtn: $('passBtn'), takeBtn: $('takeBtn'), actionHint: $('actionHint'),
+  codeText: $('codeText'), statusText: $('statusText'), qr: $('qr'), shareLink: $('shareLink'), startBtn: $('startBtn'), copyBtn: $('copyBtn'), alertBtn: $('alertBtn'), roomPhotoBtn: $('roomPhotoBtn'),
+  turnBanner: $('turnBanner'), currentCard: $('currentCard'), pot: $('pot'), turnText: $('turnText'), passBtn: $('passBtn'), takeBtn: $('takeBtn'), actionHint: $('actionHint'),
   players: $('players'), cardsRemaining: $('cardsRemaining'), ranking: $('ranking'), podium: $('podium'), downloadResultBtn: $('downloadResultBtn'), log: $('log'), toast: $('toast'),
+  turnOverlay: $('turnOverlay'), fxLayer: $('fxLayer'),
 };
+
+const turnLines = [
+  'Sua vez! A mesa inteira está julgando em silêncio.',
+  'Sua vez! Não deixa o povo envelhecer esperando.',
+  'Vai, campeão. Ou paga ficha ou abraça o caos.',
+  'A carta está encarando você. Resolve isso.',
+  'Sua vez! Momento de brilhar — ou de tomar uma decisão ruim com confiança.',
+];
+
+const waitingLines = [
+  'Vez de {name}. Todo mundo fingindo paciência.',
+  '{name} está calculando como se fosse xadrez 4D.',
+  'Aguardando {name}. Café permitido.',
+  'Vez de {name}. O drama é parte da experiência.',
+];
 
 function playerId() {
   let id = localStorage.getItem('nt-player-id');
@@ -153,9 +171,97 @@ function showToast(message) {
   setTimeout(() => els.toast.classList.add('hidden'), 2800);
 }
 
+function randomFrom(list) {
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function setAlertButton() {
+  const notificationsOn = 'Notification' in window && Notification.permission === 'granted';
+  const vibrationsOn = localStorage.getItem('nt-alerts') === 'on';
+  els.alertBtn.textContent = notificationsOn || vibrationsOn ? 'Alertas ativos' : 'Ativar alertas';
+}
+
+async function enableTurnAlerts() {
+  localStorage.setItem('nt-alerts', 'on');
+  if ('Notification' in window && Notification.permission === 'default') {
+    try { await Notification.requestPermission(); } catch (_error) { /* ignore */ }
+  }
+  try {
+    audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+    await audioContext.resume();
+  } catch (_error) { /* ignore */ }
+  setAlertButton();
+  showToast('Alertas ligados. Quando for sua vez, vai ter flash, vibração e zero desculpas.');
+}
+
+function playTurnSound() {
+  if (localStorage.getItem('nt-alerts') !== 'on') return;
+  try {
+    audioContext = audioContext || new (window.AudioContext || window.webkitAudioContext)();
+    const now = audioContext.currentTime;
+    [523.25, 659.25, 783.99].forEach((frequency, index) => {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.frequency.value = frequency;
+      osc.type = 'triangle';
+      gain.gain.setValueAtTime(0.0001, now + index * 0.09);
+      gain.gain.exponentialRampToValueAtTime(0.08, now + index * 0.09 + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.09 + 0.16);
+      osc.connect(gain).connect(audioContext.destination);
+      osc.start(now + index * 0.09);
+      osc.stop(now + index * 0.09 + 0.18);
+    });
+  } catch (_error) { /* ignore */ }
+}
+
+function notifyTurn() {
+  if (localStorage.getItem('nt-alerts') !== 'on') return;
+  if ('Notification' in window && Notification.permission === 'granted' && document.hidden) {
+    new Notification('No Thanks: sua vez!', { body: 'A mesa está esperando sua jogada.', tag: `no-thanks-${state?.code || 'room'}` });
+  }
+}
+
+function spawnFx(kind = 'spark') {
+  const icons = kind === 'take' ? ['💸', '🃏', '😬', '✨'] : kind === 'pass' ? ['🙅', '🪙', '🏃', '💨'] : ['🔥', '⚡', '👀', '🎯', '⏰'];
+  for (let i = 0; i < 18; i += 1) {
+    const bit = document.createElement('span');
+    bit.className = 'fx-bit';
+    bit.textContent = icons[i % icons.length];
+    bit.style.left = `${12 + Math.random() * 76}%`;
+    bit.style.setProperty('--dx', `${(Math.random() - 0.5) * 220}px`);
+    bit.style.setProperty('--dy', `${-120 - Math.random() * 260}px`);
+    bit.style.animationDelay = `${Math.random() * 180}ms`;
+    els.fxLayer.appendChild(bit);
+    setTimeout(() => bit.remove(), 1250);
+  }
+}
+
+function triggerTurnAttention() {
+  document.body.classList.add('turn-flash');
+  els.turnOverlay.classList.remove('hidden');
+  els.turnOverlay.classList.add('show');
+  navigator.vibrate?.([160, 70, 160, 70, 260]);
+  playTurnSound();
+  notifyTurn();
+  spawnFx('turn');
+  setTimeout(() => document.body.classList.remove('turn-flash'), 1800);
+  setTimeout(() => {
+    els.turnOverlay.classList.remove('show');
+    els.turnOverlay.classList.add('hidden');
+  }, 1650);
+}
+
+function handleTurnEffects(nextState) {
+  const turnKey = `${nextState.code || ''}:${nextState.currentPlayerId || ''}:${nextState.version || ''}`;
+  const becameMyTurn = nextState.started && !nextState.ended && nextState.currentPlayerId === playerId() && nextState.currentPlayerId !== state?.currentPlayerId;
+  if (becameMyTurn && turnKey !== lastTurnKey) triggerTurnAttention();
+  if (nextState.currentPlayerId) lastTurnKey = turnKey;
+}
+
 function applyState(nextState) {
   if (!nextState) return;
   if (state && nextState.code === state.code && Number(nextState.version || 0) < Number(state.version || 0)) return;
+  handleTurnEffects(nextState);
   state = nextState;
   render();
   ensurePolling();
@@ -208,6 +314,8 @@ async function joinRoom(code = els.roomCode.value) {
 }
 
 async function simpleAction(event) {
+  if (event === 'game:pass') spawnFx('pass');
+  if (event === 'game:take') spawnFx('take');
   const res = await emitAck(event, {});
   if (!res.ok) return showToast(res.error);
   if (res.state) applyState(res.state);
@@ -256,7 +364,11 @@ function render() {
   els.cardsRemaining.textContent = `${state.cardsRemaining} carta(s)`;
   const me = state.players.find((p) => p.self || p.id === playerId());
   const isMyTurn = state.currentPlayerId === playerId();
-  els.turnText.textContent = isMyTurn ? 'Sua vez!' : `Vez de ${state.currentPlayerName || '...'}`;
+  document.body.classList.toggle('my-turn', Boolean(state.started && !state.ended && isMyTurn));
+  els.turnBanner.classList.toggle('hidden', !isMyTurn || !state.started || state.ended);
+  els.turnText.textContent = isMyTurn
+    ? randomFrom(turnLines)
+    : randomFrom(waitingLines).replace('{name}', state.currentPlayerName || '...');
   els.passBtn.disabled = !isMyTurn || !me || me.chips <= 0;
   els.takeBtn.disabled = !isMyTurn;
   els.actionHint.textContent = me && me.chips <= 0 && isMyTurn ? 'Você está sem fichas, então precisa pegar a carta.' : '';
@@ -271,7 +383,7 @@ function render() {
       </div>
     `;
     return `
-      <article class="player ${p.id === state.currentPlayerId ? 'current' : ''} ${p.self || p.id === playerId() ? 'me' : ''} ${!state.started ? 'draggable' : ''}" data-player-id="${escapeHtml(p.id)}" draggable="${!state.started}">
+      <article class="player ${p.id === state.currentPlayerId ? 'current' : ''} ${p.id === state.currentPlayerId && state.started && !state.ended ? 'spotlight' : ''} ${p.self || p.id === playerId() ? 'me' : ''} ${!state.started ? 'draggable' : ''}" data-player-id="${escapeHtml(p.id)}" draggable="${!state.started}">
         <div class="player-top">
           <span class="seat-number">${index + 1}</span>
           ${avatarMarkup(p, 'small')}
@@ -471,9 +583,11 @@ els.copyBtn.addEventListener('click', async () => {
   await navigator.clipboard.writeText(roomUrl());
   showToast('Link copiado.');
 });
+els.alertBtn.addEventListener('click', enableTurnAlerts);
 els.roomCode.addEventListener('input', () => { els.roomCode.value = els.roomCode.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); });
 els.name.value = localStorage.getItem('nt-name') || '';
 updateAvatarPreview();
+setAlertButton();
 
 socket.on('connect', async () => {
   const code = activeCode();
