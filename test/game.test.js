@@ -50,6 +50,19 @@ test('serialize hides other players chips and score during the game', () => {
   assert.equal(bia.score, null);
 });
 
+test('serialize keeps taken cards public for every player during the game', () => {
+  const room = createRoom('a', 'Ana', 'TEST');
+  addPlayer(room, 'b', 'Bia');
+  addPlayer(room, 'c', 'Caio');
+  startGame(room, 'a');
+  room.players[0].cards = [3, 12];
+  room.players[1].cards = [9, 10];
+
+  const caioView = serialize(room, 'c');
+  assert.deepEqual(caioView.players.find((player) => player.id === 'a').cards, [3, 12]);
+  assert.deepEqual(caioView.players.find((player) => player.id === 'b').cards, [9, 10]);
+});
+
 test('serialize reveals all chips and final scores after the game ends', () => {
   const room = createRoom('a', 'Ana', 'TEST');
   addPlayer(room, 'b', 'Bia');

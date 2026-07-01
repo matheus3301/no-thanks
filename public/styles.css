@@ -339,7 +339,12 @@ h2, h3 { margin: .1rem 0 .6rem; }
   body.phase-game .score { min-width: 0; font-size: .64rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   body.phase-game .meta { margin-top: .2rem; font-size: .58rem; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   body.phase-game .cards { gap: .18rem; margin-top: .25rem; max-height: 2.25rem; overflow: hidden; }
-  body.phase-game .player:not(.me) .cards { display: none; }
+  body.phase-game .player:not(.me) .cards {
+    display: flex;
+    flex-wrap: nowrap;
+    max-height: 1.25rem;
+    overflow: hidden;
+  }
   body.phase-game .mini-card { min-width: 1.35rem; padding: .12rem .18rem; border-radius: .28rem; font-size: .62rem; }
 }
 
