@@ -1,6 +1,7 @@
 const { io } = require('socket.io-client');
 
 const base = process.env.SMOKE_URL || 'http://127.0.0.1:3030';
+const testAvatar = 'data:image/jpeg;base64,smokeavatar';
 const players = [
   { id: 'smoke-a', name: 'Smoke A' },
   { id: 'smoke-b', name: 'Smoke B' },
@@ -41,12 +42,12 @@ function emitAck(socket, event, payload) {
   const sockets = players.map(connect);
   await Promise.all(sockets.map(waitConnect));
 
-  const create = await emitAck(sockets[0], 'room:create', { name: players[0].name });
+  const create = await emitAck(sockets[0], 'room:create', { name: players[0].name, avatar: testAvatar });
   if (!create.ok) throw new Error(create.error);
   const code = create.code;
 
   for (let i = 1; i < sockets.length; i += 1) {
-    const join = await emitAck(sockets[i], 'room:join', { code, name: players[i].name });
+    const join = await emitAck(sockets[i], 'room:join', { code, name: players[i].name, avatar: testAvatar });
     if (!join.ok) throw new Error(join.error);
   }
 
@@ -62,6 +63,7 @@ function emitAck(socket, event, payload) {
   const self = anaView.players.find((p) => p.id === players[0].id);
   const other = anaView.players.find((p) => p.id === players[1].id);
   if (self.chips === null || self.chipsHidden) throw new Error('own chips are hidden');
+  if (self.avatar !== testAvatar) throw new Error('own avatar missing');
   if (other.chips !== null || !other.chipsHidden || other.score !== null) throw new Error('other player chips/score leaked');
 
   const currentSocket = sockets.find((socket) => socket.player.id === anaView.currentPlayerId);

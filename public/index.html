@@ -15,6 +15,14 @@
         <label>Seu nome
           <input id="name" autocomplete="name" maxlength="24" placeholder="Ex: Matheus" />
         </label>
+        <div class="avatar-setup">
+          <div id="avatarPreview" class="avatar avatar-preview" aria-label="Prévia do avatar">🙂</div>
+          <div>
+            <button id="photoBtn" type="button">Tirar foto para avatar</button>
+            <button id="clearPhotoBtn" type="button" class="ghost">Remover foto</button>
+            <p class="muted small">Opcional: use a câmera do celular. A foto aparece no jogo e no pódio final.</p>
+          </div>
+        </div>
         <div class="join-line">
           <button id="createBtn" class="primary">Criar mesa</button>
         </div>
@@ -26,6 +34,13 @@
         <p id="entryError" class="error"></p>
       </section>
 
+      <section id="cameraPanel" class="panel camera-panel hidden">
+        <h3>Foto do avatar</h3>
+        <video id="cameraPreview" class="camera-preview" autoplay playsinline muted></video>
+        <button id="captureBtn" type="button" class="primary">Usar essa foto</button>
+        <canvas id="photoCanvas" class="hidden" width="240" height="240"></canvas>
+      </section>
+
       <section id="room" class="hidden">
         <header class="topbar panel">
           <div>
@@ -33,6 +48,7 @@
             <h2 id="statusText">Aguardando jogadores</h2>
           </div>
           <button id="copyBtn" class="ghost">Copiar link</button>
+          <button id="roomPhotoBtn" class="ghost">Trocar foto</button>
         </header>
 
         <section id="lobby" class="panel lobby">
@@ -80,7 +96,10 @@
         </section>
 
         <section id="result" class="panel hidden">
+          <p class="eyebrow">Resultado final</p>
           <h3>Fim de jogo</h3>
+          <div id="podium" class="podium"></div>
+          <button id="downloadResultBtn" type="button" class="primary">Baixar imagem do resultado</button>
           <ol id="ranking" class="ranking"></ol>
         </section>
 

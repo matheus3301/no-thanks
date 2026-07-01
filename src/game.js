@@ -39,6 +39,7 @@ function publicPlayer(player, viewerId, ended = false) {
   return {
     id: player.id,
     name: player.name,
+    avatar: player.avatar || null,
     chips: showPrivate ? player.chips : null,
     chipsHidden: !showPrivate,
     cards: [...player.cards].sort((a, b) => a - b),
@@ -60,6 +61,14 @@ function scoreCards(cards) {
 
 function scorePlayer(player) {
   return scoreCards(player.cards) - player.chips;
+}
+
+function sanitizeAvatar(avatar) {
+  if (!avatar) return null;
+  const value = String(avatar);
+  if (!value.startsWith('data:image/')) return null;
+  if (value.length > 180_000) return null;
+  return value;
 }
 
 function currentPlayer(room) {
@@ -113,7 +122,7 @@ function drawNext(room) {
   }
 }
 
-function createRoom(hostId, hostName, code = makeCode()) {
+function createRoom(hostId, hostName, code = makeCode(), avatar = null) {
   const room = {
     code,
     version: 1,
@@ -127,17 +136,19 @@ function createRoom(hostId, hostName, code = makeCode()) {
     currentPlayerIndex: 0,
     log: [],
   };
-  addPlayer(room, hostId, hostName, true);
+  addPlayer(room, hostId, hostName, true, avatar);
   addLog(room, `${hostName} criou a mesa.`);
   markChanged(room);
   return room;
 }
 
-function addPlayer(room, id, name, host = false) {
+function addPlayer(room, id, name, host = false, avatar = null) {
   const existing = room.players.find((player) => player.id === id);
   if (existing) {
     existing.connected = true;
     if (name) existing.name = String(name).trim().slice(0, 24) || existing.name;
+    const cleanAvatar = sanitizeAvatar(avatar);
+    if (cleanAvatar) existing.avatar = cleanAvatar;
     if (host) {
       existing.host = true;
       room.hostId = id;
@@ -148,7 +159,7 @@ function addPlayer(room, id, name, host = false) {
   if (room.started) throw new Error('A partida já começou.');
   if (room.players.length >= MAX_PLAYERS) throw new Error('Mesa cheia.');
   const safeName = String(name || 'Jogador').trim().slice(0, 24) || 'Jogador';
-  const player = { id, name: safeName, chips: 0, cards: [], connected: true, host };
+  const player = { id, name: safeName, avatar: sanitizeAvatar(avatar), chips: 0, cards: [], connected: true, host };
   room.players.push(player);
   if (host) room.hostId = id;
   markChanged(room);
@@ -217,6 +228,16 @@ function reorderPlayers(room, requesterId, orderedIds) {
   markChanged(room);
 }
 
+function updatePlayerAvatar(room, playerId, avatar) {
+  const player = room.players.find((p) => p.id === playerId);
+  if (!player) throw new Error('Você não está nesta mesa.');
+  const cleanAvatar = sanitizeAvatar(avatar);
+  if (!cleanAvatar) throw new Error('Foto inválida ou grande demais.');
+  player.avatar = cleanAvatar;
+  addLog(room, `${player.name} atualizou a foto.`);
+  markChanged(room);
+}
+
 function disconnectPlayer(room, playerId) {
   const player = room.players.find((p) => p.id === playerId);
   if (player) {
@@ -235,6 +256,7 @@ module.exports = {
   passCard,
   takeCard,
   reorderPlayers,
+  updatePlayerAvatar,
   disconnectPlayer,
   serialize,
   scoreCards,

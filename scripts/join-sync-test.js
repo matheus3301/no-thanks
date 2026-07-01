@@ -2,9 +2,9 @@ const { io } = require('socket.io-client');
 
 const base = process.env.SMOKE_URL || 'http://127.0.0.1:3030';
 const players = [
-  { id: `sync-a-${Date.now()}`, name: 'Sync A' },
-  { id: `sync-b-${Date.now()}`, name: 'Sync B' },
-  { id: `sync-c-${Date.now()}`, name: 'Sync C' },
+  { id: `sync-a-${Date.now()}`, name: 'Sync A', avatar: 'data:image/jpeg;base64,synca' },
+  { id: `sync-b-${Date.now()}`, name: 'Sync B', avatar: 'data:image/jpeg;base64,syncb' },
+  { id: `sync-c-${Date.now()}`, name: 'Sync C', avatar: 'data:image/jpeg;base64,syncc' },
 ];
 
 function connect(player) {
@@ -57,25 +57,31 @@ function waitFor(socket, predicate, label, timeout = 2500) {
 (async () => {
   const [host, b, c] = players.map(connect);
   await waitConnect(host);
-  const created = await emitAck(host, 'room:create', { name: host.player.name });
+  const created = await emitAck(host, 'room:create', { name: host.player.name, avatar: host.player.avatar });
   if (!created?.ok) throw new Error(`create failed: ${created?.error || JSON.stringify(created)}`);
   const code = created.code;
   await waitFor(host, (state) => state.players.length === 1, 'host sees itself');
 
   await waitConnect(b);
-  const joinedB = await emitAck(b, 'room:join', { code, name: b.player.name });
+  const joinedB = await emitAck(b, 'room:join', { code, name: b.player.name, avatar: b.player.avatar });
   if (!joinedB?.ok) throw new Error(`join B failed: ${joinedB?.error || JSON.stringify(joinedB)}`);
   const hostAfterB = await waitFor(host, (state) => state.players.some((p) => p.name === b.player.name), 'host sees B join');
   const bAfterB = await waitFor(b, (state) => state.players.length === 2, 'B sees host');
 
   await waitConnect(c);
-  const joinedC = await emitAck(c, 'room:join', { code, name: c.player.name });
+  const joinedC = await emitAck(c, 'room:join', { code, name: c.player.name, avatar: c.player.avatar });
   if (!joinedC?.ok) throw new Error(`join C failed: ${joinedC?.error || JSON.stringify(joinedC)}`);
   const all = await Promise.all([
     waitFor(host, (state) => state.players.length === 3, 'host sees 3'),
     waitFor(b, (state) => state.players.length === 3, 'B sees 3'),
     waitFor(c, (state) => state.players.length === 3, 'C sees 3'),
   ]);
+  if (!all[0].players.every((player) => player.avatar)) throw new Error('avatars did not sync to host');
+
+  const updatedAvatar = 'data:image/png;base64,updated-b';
+  const avatarUpdate = await emitAck(b, 'player:avatar', { avatar: updatedAvatar });
+  if (!avatarUpdate?.ok) throw new Error(`avatar update failed: ${avatarUpdate?.error || JSON.stringify(avatarUpdate)}`);
+  await waitFor(host, (state) => state.players.find((p) => p.id === b.player.id)?.avatar === updatedAvatar, 'host sees avatar update');
 
   const reorderedIds = [players[2].id, players[0].id, players[1].id];
   const reorder = await emitAck(b, 'lobby:reorder', { orderedIds: reorderedIds });

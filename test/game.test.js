@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createRoom, addPlayer, startGame, passCard, takeCard, reorderPlayers, scoreCards, startingChips, serialize } = require('../src/game');
+const { createRoom, addPlayer, startGame, passCard, takeCard, reorderPlayers, updatePlayerAvatar, scoreCards, startingChips, serialize } = require('../src/game');
 
 test('score only counts the lowest card in consecutive runs and subtracts chips', () => {
   assert.equal(scoreCards([3, 4, 5, 8, 10, 11]), 21);
@@ -79,4 +79,15 @@ test('reorderPlayers is blocked after the game starts', () => {
   startGame(room, 'a');
 
   assert.throws(() => reorderPlayers(room, 'a', ['c', 'b', 'a']), /antes da partida/);
+});
+
+test('avatars are stored and serialized for players', () => {
+  const avatar = 'data:image/jpeg;base64,abc123';
+  const room = createRoom('a', 'Ana', 'TEST', avatar);
+  addPlayer(room, 'b', 'Bia', false, avatar);
+  updatePlayerAvatar(room, 'b', 'data:image/png;base64,xyz789');
+
+  const view = serialize(room, 'a');
+  assert.equal(view.players.find((player) => player.id === 'a').avatar, avatar);
+  assert.equal(view.players.find((player) => player.id === 'b').avatar, 'data:image/png;base64,xyz789');
 });

@@ -11,6 +11,7 @@ const {
   passCard,
   takeCard,
   reorderPlayers,
+  updatePlayerAvatar,
   disconnectPlayer,
   serialize,
   makeCode,
@@ -100,14 +101,14 @@ function attachSocket(socket, roomCode, playerId) {
 }
 
 io.on('connection', (socket) => {
-  socket.on('room:create', ({ name, playerId }, ack = () => {}) => {
+  socket.on('room:create', ({ name, playerId, avatar }, ack = () => {}) => {
     try {
       const id = identify(socket, { playerId });
       let code;
       do {
         code = makeCode();
       } while (rooms.has(code));
-      const room = createRoom(id, name, code);
+      const room = createRoom(id, name, code, avatar);
       rooms.set(code, room);
       attachSocket(socket, code, id);
       ack({ ok: true, code, state: serialize(room, id), version: room.version });
@@ -117,14 +118,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('room:join', ({ code, name, playerId }, ack = () => {}) => {
+  socket.on('room:join', ({ code, name, playerId, avatar }, ack = () => {}) => {
     try {
       const id = identify(socket, { playerId });
       const roomCode = String(code || '').trim().toUpperCase();
       const room = rooms.get(roomCode);
       if (!room) throw new Error('Mesa não encontrada. Confere o código/QR.');
       const hadPlayer = room.players.some((player) => player.id === id);
-      addPlayer(room, id, name);
+      addPlayer(room, id, name, false, avatar);
       attachSocket(socket, roomCode, id);
       if (!hadPlayer) {
         room.log.push(`${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} · ${name || 'Jogador'} entrou na mesa.`);
@@ -170,6 +171,20 @@ io.on('connection', (socket) => {
       const room = rooms.get(socketRoom.get(socket.id));
       if (!room) throw new Error('Você não está em uma mesa.');
       reorderPlayers(room, playerId, payload.orderedIds);
+      ack({ ok: true, version: room.version, state: serialize(room, playerId) });
+      emitRoom(room);
+    } catch (error) {
+      ack({ ok: false, error: error.message });
+      sendError(socket, error.message);
+    }
+  });
+
+  socket.on('player:avatar', (payload = {}, ack = () => {}) => {
+    try {
+      const playerId = identify(socket, payload);
+      const room = rooms.get(socketRoom.get(socket.id));
+      if (!room) throw new Error('Você não está em uma mesa.');
+      updatePlayerAvatar(room, playerId, payload.avatar);
       ack({ ok: true, version: room.version, state: serialize(room, playerId) });
       emitRoom(room);
     } catch (error) {
