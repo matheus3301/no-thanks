@@ -178,7 +178,8 @@ function randomFrom(list) {
 function setAlertButton() {
   const notificationsOn = 'Notification' in window && Notification.permission === 'granted';
   const vibrationsOn = localStorage.getItem('nt-alerts') === 'on';
-  els.alertBtn.textContent = notificationsOn || vibrationsOn ? 'Alertas ativos' : 'Ativar alertas';
+  const compact = window.matchMedia?.('(max-width: 760px)').matches;
+  els.alertBtn.textContent = compact ? (notificationsOn || vibrationsOn ? 'Alertas ✓' : 'Alertas') : (notificationsOn || vibrationsOn ? 'Alertas ativos' : 'Ativar alertas');
 }
 
 async function enableTurnAlerts() {
@@ -343,6 +344,10 @@ function render() {
   if (!state) return;
   els.entry.classList.add('hidden');
   els.room.classList.remove('hidden');
+  document.body.classList.toggle('in-room', true);
+  document.body.classList.toggle('phase-lobby', !state.started);
+  document.body.classList.toggle('phase-game', Boolean(state.started && !state.ended));
+  document.body.classList.toggle('phase-result', Boolean(state.ended));
   els.codeText.textContent = state.code;
   els.qr.src = `/qr/${state.code}`;
   els.shareLink.href = roomUrl();
@@ -585,6 +590,7 @@ els.copyBtn.addEventListener('click', async () => {
 });
 els.alertBtn.addEventListener('click', enableTurnAlerts);
 els.roomCode.addEventListener('input', () => { els.roomCode.value = els.roomCode.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 4); });
+window.addEventListener('resize', setAlertButton);
 els.name.value = localStorage.getItem('nt-name') || '';
 updateAvatarPreview();
 setAlertButton();
