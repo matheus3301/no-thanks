@@ -11,6 +11,13 @@ take the current card — and its growing pot.
 It is inspired by the rules of **No Thanks! / Não, Obrigado** and is intended
 for a quick game around the same table, without accounts or a central service.
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/lobby.png" alt="No Thanks welcome screen on a phone" width="30%" />
+  <img src="docs/screenshots/room.png" alt="No Thanks game room with QR code on a phone" width="30%" />
+</p>
+
 ## Features
 
 - **QR-code joining.** The host creates a room and shares its QR code or link.
