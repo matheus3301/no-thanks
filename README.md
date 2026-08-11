@@ -14,8 +14,8 @@ for a quick game around the same table, without accounts or a central service.
 ## Screenshots
 
 <p align="center">
-  <img src="docs/screenshots/lobby.png" alt="No Thanks welcome screen on a phone" width="30%" />
-  <img src="docs/screenshots/room.png" alt="No Thanks game room with QR code on a phone" width="30%" />
+  <img src="docs/screenshots/home.png" alt="No Thanks welcome screen" width="48%" />
+  <img src="docs/screenshots/gameplay.png" alt="No Thanks multiplayer game in progress" width="48%" />
 </p>
 
 ## Features
